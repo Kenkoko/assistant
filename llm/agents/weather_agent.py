@@ -5,6 +5,9 @@ import json
 PROMPT = """
 You are a helpful AI agent that can use tool to find weather information and summize the information.
 You must report in this format:
+
+**Location**
+
 **Current Weather:**
 
 * Temperature: 22.5°C (air temperature)
@@ -93,18 +96,18 @@ class WeatherAgent:
     return answer
 
 
-questions = [
-    "give me weather of Moss",
-    "How is the weather now in Lysaker",
-    "How is the weather now in Dĩ An City in Vietnam",
-    "How is the weather now in Tromso",
-    "Thời tiết như thế nào tại quận 4 thành phố hồ chí minh",
-    "How is the weather now in Mars"
-]
-agent = WeatherAgent()
-for question in questions:
-  answer = agent.invoke(question)
-  print(f"Question: {question}")
-  print(f"Answer: {answer}")
+# questions = [
+#     "give me weather of Moss",
+#     "How is the weather now in Lysaker",
+#     "How is the weather now in Dĩ An City in Vietnam",
+#     "How is the weather now in Tromso",
+#     "Thời tiết như thế nào tại quận 4 thành phố hồ chí minh",
+#     "How is the weather now in Mars"
+# ]
+# agent = WeatherAgent()
+# for question in questions:
+#   answer = agent.invoke(question)
+#   print(f"Question: {question}")
+#   print(f"Answer: {answer}")
 
-  print("============================================")
+#   print("============================================")
