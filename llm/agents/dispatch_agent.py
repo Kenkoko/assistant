@@ -1,12 +1,16 @@
+import traceback
 from litellm import completion
-from llm.agents.basic_tools import weatherTool
+from llm.agents.basic_tools import getTouristEvents
 from llm.agents.weather_agent import WeatherAgent
 import json
 
+from llm.memory.in_memory import InMemoryHistory
+from llm.memory.utils import BaseMessage
+
 PROMPT = """
-You are an AI asistant. You are given questions and a set of possible functions or/and agents.
-You always answer the questions by yourself and in the language that user asked.
-You only use the function(s)/agent(s) when necessary.
+You are an AI asistant. You are given a question and a set of possible functions.
+You always answer the question by yourself and in the language that user asked.
+You only use the function(s) when necessary.
 If you do not know the answer, respond honestly by stating that you don't know!
 """
 
@@ -14,10 +18,6 @@ class DispatchAgent:
   def __init__(self, prompt: str = None, agents: list = None):
     if prompt is None:
       prompt = PROMPT
-    self.system_prompt = {
-        "role": "system",
-        "content": prompt
-    }
     if agents is not None:
       self.available_functions = {}
       for agent in agents:
@@ -27,7 +27,8 @@ class DispatchAgent:
           description = f"Ask agent '{agent_name}' for help"
 
         self.available_functions = {
-            agent_name: agent['agent'].invoke
+            agent_name: agent['agent'].invoke,
+            'getTouristEvents': getTouristEvents
         }  # only one function in this example, but you can have multiple
 
         self.tools = [
@@ -41,17 +42,48 @@ class DispatchAgent:
                     "required": True
                 }
             }
+          },
+          {
+            "name": "nop",
+            "description": """This function does nothing. 
+
+Call this function if you notice that you have already called the same
+tool multiple times or you have already called all the tools you need.
+The message you return will be shown to the user as your response to their
+request.""",
+            "parameters": {
+                "reason": {
+                    "param_type": "string",
+                    "required": True
+                }
+            }
+          },
+          {
+            "name": "getTouristEvents",
+            "description": "Get interesting tourist events or/and activities in a city on a specific day",
+            "parameters": {
+                "location": {
+                    "param_type": "string",
+                    "description": "The city or location. E.g: Moss",
+                    "required": True
+                },
+                "day": {
+                  "param_type": "string",
+                  "description": "The day we want to know which events are happening in the location, the format should be DD/MM/YYYY",
+                  "required": True
+                }
+            }
           }
         ]
-    self.memory = [self.system_prompt]
+    self.memory = InMemoryHistory()
+    self.memory.add_message(BaseMessage("system", prompt))
   
   def invoke(self, request):
-    messages_for_llm = self.memory.copy()
+    messages_for_llm = self.memory.get_messages_in_dict()
     reasonPrompt = """
-This is the current question or request from user, you have to focus on it:
+This is the current question:
 {question}
-
-let's THINK step by step!
+you have to FOCUS on it, let's THINK step by step!
   """.format(question=request)
 
     messages_for_llm.append({
@@ -59,7 +91,7 @@ let's THINK step by step!
       "content": reasonPrompt,
     })
     response = completion(
-        model="ollama/llama3.2", 
+        model="ollama/qwen3", 
         messages=messages_for_llm,
         tools=self.tools,
         api_base="http://localhost:11434"
@@ -87,35 +119,30 @@ let's THINK step by step!
         messages_for_llm.append(
           {
               "role": "tool",
-              "content": function_response,
+              "content": f'Information: \n {function_response}',
           }
         )  # extend conversation with function response
       response = completion(
-          model="ollama/llama3.2", 
+          model="ollama/qwen3", 
           messages=messages_for_llm,
           api_base="http://localhost:11434"
       )
     answer = response.json()['choices'][-1]['message']['content']
 
-    self.memory.append({
-      "role": "user",
-      "content": request,
-    })
-    self.memory.append({
-      "role": "assistant",
-      "content": answer,
-    })
+    self.memory.add_user_message(request)
+    self.memory.add_ai_message(answer)
 
     return answer
 
 
 questions = [
-    'who is a dog',
     'what is a dog',
+    'Give me a tour plan on 12 June 2025 in Moss for 2 people',
     "give me detail report about the weather in Moss",
     "How is the weather now in Lysaker",
     'what is the phonetic representation of the "hello" word',
     'How is the weather now in Mars',
+    'Classify the text into neutral, negative or positive.\nText: I think the vacation is okay.\nSentiment:',
     'what did I ask you so far?'
 ]
 weather_agent = WeatherAgent()
@@ -126,8 +153,15 @@ agent = DispatchAgent(None, [{
 }])
 
 for question in questions:
-  answer = agent.invoke(question)
-  print(f"Question: {question}")
-  print(f"Answer: {answer}")
+  for x in range(6):
+    try:
+      answer = agent.invoke(question)
+      print(f"Question: {question}")
+      print(f"Answer: {answer}")
 
-  print("============================================")
+      print("============================================")
+      break
+    except Exception as e: 
+      exception_trace_str = traceback.format_exc()
+      print("Exception stack trace as string:\n", exception_trace_str)
+      print("Retrying............")

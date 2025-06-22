@@ -5,6 +5,17 @@ import json
 from geopy.geocoders import Nominatim
 
 
+def nop(reason: str = "Your response to show to the user"):
+    return reason
+
+def getTouristEvents(location: str, day: str):
+    with open('.\\llm\\agents\\events.json') as f:
+        events = json.load(f)
+        day_events = events.get(location, {})
+        if day in day_events:
+          return f"Interesting tourist events or/and activities in {location} on {day}:\n {day_events[day]}"
+        return f"{day} is just a normal day at {location}"
+
 def weatherTool(location: str):
     """Get the weather for a city in next 12 hours"""
     if (location == None) or (location == 'null'):
