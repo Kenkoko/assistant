@@ -1,0 +1,13 @@
+pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+pip install --upgrade --quiet langchain langchain-openai langchain-chroma
+pip install discord.py
+pip install langchain-ollama
+pip install langchain_experimental
+pip install pymilvus
+pip install --upgrade --quiet  langchain langchain-core langchain-community langchain-text-splitters langchain-milvus langchain-openai bs4
+pip install langchain-huggingface
+pip install grandalf
+pip install geopy
+pip install langgraph-supervisor
+https://github.com/langchain-ai/langchain/discussions/16582
+https://ollama.com/download
